@@ -20,7 +20,6 @@ startServer(app); // for gql
 const server = https.createServer(app);
 setupWebSocket(server);
 
-// ================= START SERVER =================
 server.listen(8080, () => {
   console.log("Server started on http://localhost:8080");
 });

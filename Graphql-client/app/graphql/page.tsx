@@ -34,6 +34,9 @@ type UserFormState = {
   subjects: string[]; // Stores IDs of selected subjects
 };
 
+const getErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
+
 
 
 export default function UserSubjectManagement() {
@@ -106,7 +109,14 @@ export default function UserSubjectManagement() {
     try {
       if (userForm.id) {
         // Logic for Update
-        const variables: any = { ...userForm };
+        const variables: {
+          id: string;
+          name: string;
+          email: string;
+          password?: string;
+          image: string;
+          subjects: string[];
+        } = { ...userForm };
         // If password is empty string, don't send it to the backend
         if (!userForm.password.trim()) delete variables.password;
         await updateUser({ variables });
@@ -117,7 +127,7 @@ export default function UserSubjectManagement() {
       setUserForm(initialUserForm);
       refetchUsers(); // Refresh UI
     } catch (err: unknown) {
-      alert(err);
+      alert(getErrorMessage(err));
     }
   };
 
@@ -127,7 +137,7 @@ export default function UserSubjectManagement() {
       await deleteUser({ variables: { id } });
       refetchUsers();
     } catch (err: unknown) {
-      alert(err);
+      alert(getErrorMessage(err));
     }
   };
 
