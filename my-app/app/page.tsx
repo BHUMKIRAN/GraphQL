@@ -1,94 +1,168 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-export default function Home() {
-  const [socket, setSocket] = useState(null);
-  const [message, setMessage] = useState("");
+type Message = {
+  message: string;
+  username: string;
+  time?: string;
+};
+
+const Page = () => {
+  const [ws, setWs] = useState<WebSocket | null>(null);
   const [username, setUsername] = useState("");
-  const [chatLog, setChatLog] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState([]); // new state for online users
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [status, setStatus] = useState("Connecting...");
 
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // 🔌 WebSocket connection with auto-reconnect
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8080");
+    let socket: WebSocket;
 
-    ws.onopen = () => console.log("Connected to server");
+    const connect = () => {
+      socket = new WebSocket("ws://localhost:8080");
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+      socket.onopen = () => {
+        console.log("Connected");
+        setStatus("Online");
+      };
 
-        if (data.type === "chat") {
-          // Add chat message to log
-          setChatLog((prev) => [...prev, `${data.username}: ${data.message}`]);
-        } else if (data.type === "onlineUsers") {
-          // Update online users list
-          setOnlineUsers(data.users);
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setMessages((prev) => [...prev, data]);
+        } catch (err) {
+          console.error("Invalid message format");
         }
-      } catch (err) {
-        console.error("Invalid data from server", err);
-      }
+      };
+
+      socket.onclose = () => {
+        console.log("Disconnected");
+        setStatus("Reconnecting...");
+        setTimeout(connect, 2000); // retry
+      };
+
+      socket.onerror = () => {
+        socket.close();
+      };
+
+      setWs(socket);
     };
 
-    ws.onclose = () => console.log("Disconnected from server");
+    connect();
 
-    setSocket(ws);
-
-    return () => ws.close();
+    return () => socket?.close();
   }, []);
 
+  // 📜 Auto scroll
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // 📤 Send message
   const sendMessage = () => {
-    if (!username) return alert("Enter username first");
-    if (!message) return;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ username, message }));
+    if (!message.trim() || !username.trim()) return;
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(
+        JSON.stringify({
+          message,
+          username,
+          time: new Date().toLocaleTimeString(),
+        })
+      );
       setMessage("");
     }
   };
 
   return (
-    <div className="p-10 flex gap-10">
-      {/* Chat column */}
-      <div className="flex-1">
-        <h1 className="text-2xl font-bold mb-4">Chat Room</h1>
+    <div className="h-[700px]  bg-gray-100 flex items-center justify-center ">
+      {/* Mobile Container */}
+      <div className="w-[500px] pt-5 max-w-sm bg-white shadow-lg flex flex-col rounded-xl overflow-hidden">
 
-        <div className="mb-4">
-          <input
-            className="border p-2 mr-2"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
+        {/* Header */}
+        <div className="p-3 border-b text-center text-sm font-semibold">
+          💬 Chat —{" "}
+          <span
+            className={`${
+              status === "Online"
+                ? "text-green-600"
+                : status === "Reconnecting..."
+                ? "text-yellow-500"
+                : "text-red-500"
+            }`}
+          >
+            {status}
+          </span>
         </div>
+          <div className="p-3">
+            <input
+              type="text"
+              placeholder="Enter your name..."
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full p-2 text-sm border rounded-md outline-none"
+            />
+          </div>
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-2 text-sm">
+          {messages.map((msg, i) => {
+            const isMe = msg.username === username;
 
-        <div className="border p-4 h-64 overflow-y-auto mb-4">
-          {chatLog.map((msg, idx) => (
-            <div key={idx}>{msg}</div>
-          ))}
+            return (
+              <div
+                key={i}
+                className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`p-10 rounded-full  max-w-[75%] ${
+                    isMe
+                      ? "bg-[#b07818] text-white"
+                      : "bg-gray-200 text-gray-800"
+                  }`}
+                >
+                  {!isMe && (
+                    <p className="text-[10px] opacity-60 mb-1">
+                      {msg.username}
+                    </p>
+                  )}
+
+                  <p className="break-words">{msg.message}</p>
+
+                  {msg.time && (
+                    <p className="text-[10px] opacity-60 mt-1 text-right">
+                      {msg.time}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={bottomRef} />
         </div>
+        {username && (
+          <div className="p-2 border-t flex gap-2">
+            <input
+              type="text"
+              placeholder="Message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              className="flex-1 p-2 text-sm border rounded-md outline-none"
+            />
 
-        <input
-          className="border p-2 mr-2"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type a message..."
-        />
-        <button
-          className="bg-blue-500 text-white px-4 py-2"
-          onClick={sendMessage}
-        >
-          Send
-        </button>
-      </div>
-
-      {/* Online users column */}
-      <div className="w-52">
-        <h2 className="text-xl font-bold mb-2">Online Users</h2>
-        <ul className="border p-4 h-64 overflow-y-auto">
-          {onlineUsers.map((user, idx) => (
-            <li key={idx}>{user}</li>
-          ))}
-        </ul>
+            <button
+              onClick={sendMessage}
+              className="px-3 text-sm bg-[#b07818] text-white rounded-md"
+            >
+              Send
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
-}
+};
+
+export default Page;
