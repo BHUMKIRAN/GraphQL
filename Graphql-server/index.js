@@ -1,6 +1,5 @@
 import express from "express";
 import https from "http";
-import { setupWebSocket } from "./config/websocket.js";
 import dotenv from "dotenv";
 import { startServer } from "./config/graphql.js";
 import cors from "cors";
@@ -8,6 +7,7 @@ import connectdb from "./config/db.js";
 
 dotenv.config(); // for env
 const app = express(); // for frontend server
+const server = https.createServer(app);
 app.use(
   cors({
     origin: "*",
@@ -17,9 +17,8 @@ app.use(
 connectdb(); // for database
 startServer(app); // for gql
 
-const server = https.createServer(app);
-setupWebSocket(server);
+
 
 server.listen(8080, () => {
-  console.log("Server started on http://localhost:8080");
+  console.log("Server running on port 8080");
 });
