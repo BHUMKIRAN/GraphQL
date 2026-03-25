@@ -1,6 +1,6 @@
 # Graphql (Client + Server)
 
-Monorepo with:
+
 
 - `Graphql-server/`: Express + Apollo Server (GraphQL) + MongoDB (Mongoose)
 - `Graphql-client/`: Next.js (App Router) + Apollo Client UI
@@ -11,7 +11,7 @@ Monorepo with:
   - Users can reference multiple subjects
   - Passwords are hashed with `bcrypt` before saving
 - Next.js UI pages
-  - `http://localhost:3000/graphql`: CRUD UI for users + subjects
+  - `http://localhost:3000`: CRUD UI for users + subjects
   - `http://localhost:3000/apollo`: Embedded Apollo Sandbox pointed at the local API
 - (Optional) Chat UI using WebSockets (client code exists, backend WS server is not implemented yet)
 
